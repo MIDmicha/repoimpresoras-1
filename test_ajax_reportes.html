@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test AJAX Reportes</title>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+</head>
+<body>
+    <h1>Test AJAX Reportes</h1>
+    <button onclick="testReporte()">Probar Reporte</button>
+    <div id="resultado"></div>
+    
+    <script>
+        const BASE_URL = 'http://localhost/impresoras';
+        
+        function testReporte() {
+            console.log('Iniciando petición a:', BASE_URL + '/controllers/reportes.php');
+            
+            $.ajax({
+                url: BASE_URL + '/controllers/reportes.php',
+                method: 'GET',
+                data: { action: 'equiposPorEstado' },
+                dataType: 'json',
+                success: function(response) {
+                    console.log('SUCCESS:', response);
+                    $('#resultado').html('<pre>' + JSON.stringify(response, null, 2) + '</pre>');
+                },
+                error: function(xhr, status, error) {
+                    console.error('ERROR:', xhr, status, error);
+                    console.error('Response Text:', xhr.responseText);
+                    $('#resultado').html(
+                        '<div style="color: red;">' +
+                        '<h3>Error:</h3>' +
+                        '<p>Status: ' + status + '</p>' +
+                        '<p>Error: ' + error + '</p>' +
+                        '<h4>Response:</h4>' +
+                        '<pre>' + xhr.responseText + '</pre>' +
+                        '</div>'
+                    );
+                }
+            });
+        }
+        
+        // Probar automáticamente al cargar
+        $(document).ready(function() {
+            console.log('Página cargada. BASE_URL:', BASE_URL);
+            testReporte();
+        });
+    </script>
+</body>
+</html>

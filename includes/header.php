@@ -45,13 +45,18 @@ if (!isLoggedIn()) {
     <!-- Estilos Personalizados -->
     <link href="<?php echo BASE_URL; ?>/assets/css/style.css" rel="stylesheet">
     
+    <!-- JavaScript Global Variables -->
+    <script>
+        const BASE_URL = '<?php echo BASE_URL; ?>';
+    </script>
+    
     <?php if (isset($extra_css)) echo $extra_css; ?>
 </head>
 <body>
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <i class="fas fa-print"></i>
+            <!--<i class="fas fa-print"></i>-->
             <h5 class="mb-0">Sistema de Impresoras</h5>
             <small><?php echo $_SESSION['rol_nombre']; ?></small>
         </div>

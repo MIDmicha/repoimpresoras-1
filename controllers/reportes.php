@@ -256,7 +256,6 @@ function mantenimientosPorTipoDemanda($db) {
             FROM tipos_demanda td
             LEFT JOIN mantenimientos m ON td.id = m.id_tipo_demanda 
                 AND m.fecha_mantenimiento BETWEEN :fecha_inicio AND :fecha_fin
-                AND m.activo = 1
             WHERE td.activo = 1
             GROUP BY td.id, td.nombre
             ORDER BY cantidad DESC";
@@ -281,7 +280,6 @@ function mantenimientosPorTecnico($db) {
                 COUNT(DISTINCT m.id_equipo) as equipos_atendidos
             FROM mantenimientos m
             WHERE m.fecha_mantenimiento BETWEEN :fecha_inicio AND :fecha_fin
-            AND m.activo = 1
             GROUP BY m.tecnico_responsable
             ORDER BY cantidad DESC";
     
@@ -398,7 +396,7 @@ function topEquiposMantenimiento($db) {
                 COUNT(m.id) as total_mantenimientos,
                 MAX(m.fecha_mantenimiento) as ultimo_mantenimiento
             FROM equipos e
-            LEFT JOIN mantenimientos m ON e.id = m.id_equipo AND m.activo = 1
+            LEFT JOIN mantenimientos m ON e.id = m.id_equipo
             LEFT JOIN marcas ma ON e.id_marca = ma.id
             LEFT JOIN modelos mo ON e.id_modelo = mo.id
             LEFT JOIN sedes s ON e.id_sede = s.id
@@ -456,7 +454,6 @@ function costosMantenimiento($db) {
             FROM mantenimientos m
             LEFT JOIN tipos_demanda td ON m.id_tipo_demanda = td.id
             WHERE m.fecha_mantenimiento BETWEEN :fecha_inicio AND :fecha_fin
-            AND m.activo = 1
             GROUP BY DATE_FORMAT(m.fecha_mantenimiento, '%Y-%m'), td.nombre
             ORDER BY mes DESC, cantidad DESC";
     

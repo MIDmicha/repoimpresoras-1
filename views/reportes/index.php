@@ -31,6 +31,16 @@ $extra_js = <<<'EOD'
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
 $(document).ready(function() {
+    // Establecer fechas por defecto (último mes)
+    const hoy = new Date();
+    const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    
+    $('#filtroFechaInicio').val(primerDiaMes.toISOString().split('T')[0]);
+    $('#filtroFechaFin').val(hoy.toISOString().split('T')[0]);
+    
+    // Establecer valor por defecto para días sin mantenimiento
+    $('#filtroDias').val(90);
+    
     // Cargar todos los reportes al inicio
     cargarReporteEstados();
     cargarReporteMantenimientos();
@@ -44,7 +54,12 @@ function cargarReporteEstados() {
         method: 'GET',
         data: { action: 'equiposPorEstado' },
         dataType: 'json',
+        xhrFields: {
+            withCredentials: true
+        },
         success: function(response) {
+            console.log('Respuesta estados:', response);
+            
             if (response.success) {
                 // Tabla
                 let html = '<table style="width: 100%; border-collapse: collapse;">';
@@ -87,6 +102,17 @@ function cargarReporteEstados() {
                     }
                 });
             }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error al cargar estados:', error);
+            console.error('Response:', xhr.responseText);
+            $('#tablaEstados').html(
+                '<div style="padding: 20px; text-align: center; color: #dc3545;">' +
+                '<i class="fas fa-exclamation-triangle fa-2x"></i><br><br>' +
+                '<strong>Error al cargar los datos</strong><br>' +
+                '<small>' + (xhr.responseText || error) + '</small>' +
+                '</div>'
+            );
         }
     });
 }
@@ -105,56 +131,270 @@ function cargarReporteMantenimientos() {
         },
         dataType: 'json',
         success: function(response) {
+            console.log('Respuesta mantenimientos:', response);
+            
             if (response.success) {
                 // Tabla
                 let html = '<table style="width: 100%; border-collapse: collapse;">';
                 html += '<thead><tr style="border-bottom: 2px solid #000;">';
                 html += '<th style="padding: 8px; text-align: left;">Fecha</th>';
+                html += '<th style="padding: 8px; text-align: left;">Código</th>';
                 html += '<th style="padding: 8px; text-align: left;">Equipo</th>';
                 html += '<th style="padding: 8px; text-align: left;">Tipo Demanda</th>';
                 html += '<th style="padding: 8px; text-align: left;">Técnico</th>';
                 html += '</tr></thead><tbody>';
                 
-                response.data.forEach(function(item) {
-                    html += '<tr style="border-bottom: 1px solid #ccc;">';
-                    html += `<td style="padding: 8px;">${new Date(item.fecha_mantenimiento).toLocaleDateString('es-ES')}</td>`;
-                    html += `<td style="padding: 8px;">${item.codigo_patrimonial}</td>`;
-                    html += `<td style="padding: 8px;">${item.tipo_demanda}</td>`;
-                    html += `<td style="padding: 8px;">${item.tecnico_responsable || '-'}</td>`;
-                    html += '</tr>';
-                });
+                if (response.data.length === 0) {
+                    html += '<tr><td colspan="5" style="padding: 20px; text-align: center; color: #6c757d;">';
+                    html += '<i class="fas fa-info-circle fa-2x"></i><br><br>';
+                    html += 'No se encontraron mantenimientos en el período seleccionado.<br>';
+                    html += '<small>Intente con un rango de fechas diferente.</small>';
+                    html += '</td></tr>';
+                } else {
+                    response.data.forEach(function(item) {
+                        html += '<tr style="border-bottom: 1px solid #ccc;">';
+                        html += `<td style="padding: 8px;">${new Date(item.fecha_mantenimiento).toLocaleDateString('es-ES')}</td>`;
+                        html += `<td style="padding: 8px;">${item.codigo_patrimonial}</td>`;
+                        html += `<td style="padding: 8px;">${item.marca || 'N/A'} ${item.modelo || ''}</td>`;
+                        html += `<td style="padding: 8px;"><span class="badge bg-primary">${item.tipo_demanda || 'N/A'}</span></td>`;
+                        html += `<td style="padding: 8px;">${item.tecnico_responsable || '-'}</td>`;
+                        html += '</tr>';
+                    });
+                }
                 
                 html += '</tbody></table>';
+                
+                if (response.data.length > 0) {
+                    html += `<div style="margin-top: 15px; padding: 10px; background: #d1ecf1; border-left: 4px solid #0dcaf0; color: #055160;">`;
+                    html += `<strong><i class="fas fa-info-circle"></i> Resumen:</strong> Se encontraron ${response.data.length} mantenimiento(s) en el período seleccionado.`;
+                    html += `</div>`;
+                }
+                
                 $('#tablaMantenimientos').html(html);
                 
-                // Contar por tipo de demanda
-                const conteo = {};
-                response.data.forEach(item => {
-                    conteo[item.tipo_demanda] = (conteo[item.tipo_demanda] || 0) + 1;
-                });
-                
-                // Gráfico
-                const ctx = document.getElementById('chartMantenimientos').getContext('2d');
-                if (window.chartMantenimientos) {
-                    window.chartMantenimientos.destroy();
+                // Gráfico solo si hay datos
+                if (response.data.length > 0) {
+                    // Contar por tipo de demanda
+                    const conteo = {};
+                    response.data.forEach(item => {
+                        const tipo = item.tipo_demanda || 'Sin especificar';
+                        conteo[tipo] = (conteo[tipo] || 0) + 1;
+                    });
+                    
+                    // Cargar gráficos adicionales con ApexCharts
+                    cargarGraficoTiposDemanda(fechaInicio, fechaFin);
+                    cargarGraficoTecnicos(fechaInicio, fechaFin);
                 }
-                window.chartMantenimientos = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: Object.keys(conteo),
-                        datasets: [{
-                            label: 'Cantidad',
-                            data: Object.values(conteo),
-                            backgroundColor: '#ff0000'
-                        }]
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error al cargar mantenimientos:', error);
+            console.error('Respuesta completa:', xhr.responseText);
+            $('#tablaMantenimientos').html(
+                '<div style="padding: 20px; text-align: center; color: #dc3545;">' +
+                '<i class="fas fa-exclamation-triangle fa-2x"></i><br><br>' +
+                'Error al cargar los datos. Por favor, revise la consola.' +
+                '</div>'
+            );
+        }
+    });
+}
+
+// Función para cargar el gráfico radial 3D de tipos de demanda
+function cargarGraficoTiposDemanda(fechaInicio, fechaFin) {
+    $.ajax({
+        url: BASE_URL + '/controllers/reportes.php',
+        method: 'GET',
+        data: { 
+            action: 'mantenimientosPorTipoDemanda',
+            fecha_inicio: fechaInicio,
+            fecha_fin: fechaFin
+        },
+        dataType: 'json',
+        success: function(response) {
+            if (response.success && response.data.length > 0) {
+                const total = response.data.reduce((sum, item) => sum + parseInt(item.cantidad), 0);
+                const series = response.data.map(item => parseFloat(((item.cantidad / total) * 100).toFixed(1)));
+                const labels = response.data.map(item => item.tipo_demanda);
+                
+                const options = {
+                    series: series,
+                    chart: {
+                        type: 'radialBar',
+                        height: 380,
+                        animations: {
+                            enabled: true,
+                            easing: 'easeinout',
+                            speed: 1200
+                        },
+                        toolbar: {
+                            show: true,
+                            tools: {
+                                download: true
+                            }
+                        }
                     },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: { display: false }
+                    plotOptions: {
+                        radialBar: {
+                            offsetY: 0,
+                            startAngle: 0,
+                            endAngle: 270,
+                            hollow: {
+                                margin: 5,
+                                size: '30%',
+                                background: 'transparent',
+                            },
+                            dataLabels: {
+                                name: {
+                                    show: true,
+                                    fontSize: '13px',
+                                    fontWeight: 600,
+                                    offsetY: -10
+                                },
+                                value: {
+                                    show: true,
+                                    fontSize: '22px',
+                                    fontWeight: 700,
+                                    formatter: function(val) {
+                                        return val.toFixed(1) + '%';
+                                    }
+                                },
+                                total: {
+                                    show: true,
+                                    label: 'Total',
+                                    fontSize: '16px',
+                                    fontWeight: 600,
+                                    formatter: function() {
+                                        return total + ' mttos';
+                                    }
+                                }
+                            },
+                            track: {
+                                background: '#f2f2f2',
+                                strokeWidth: '97%',
+                                margin: 5,
+                            }
+                        }
+                    },
+                    colors: ['#00D9FF', '#FF6B9D', '#FEC400', '#7B61FF', '#1BE7FF'],
+                    labels: labels,
+                    legend: {
+                        show: true,
+                        floating: true,
+                        fontSize: '12px',
+                        position: 'left',
+                        offsetX: -10,
+                        offsetY: 10,
+                        labels: {
+                            useSeriesColors: true,
+                        },
+                        markers: {
+                            size: 0
+                        },
+                        formatter: function(seriesName, opts) {
+                            return seriesName + ": " + opts.w.globals.series[opts.seriesIndex].toFixed(1) + '%';
+                        },
+                        itemMargin: {
+                            horizontal: 1,
                         }
                     }
-                });
+                };
+
+                const chart = new ApexCharts(document.querySelector("#chartMantenimientos"), options);
+                chart.render();
+            }
+        }
+    });
+}
+
+// Función para cargar gráfico de técnicos (Treemap)
+function cargarGraficoTecnicos(fechaInicio, fechaFin) {
+    $.ajax({
+        url: BASE_URL + '/controllers/reportes.php',
+        method: 'GET',
+        data: { 
+            action: 'mantenimientosPorTecnico',
+            fecha_inicio: fechaInicio,
+            fecha_fin: fechaFin
+        },
+        dataType: 'json',
+        success: function(response) {
+            if (response.success && response.data.length > 0) {
+                const series = [{
+                    data: response.data.map(item => ({
+                        x: item.tecnico,
+                        y: parseInt(item.cantidad)
+                    }))
+                }];
+                
+                const options = {
+                    series: series,
+                    chart: {
+                        type: 'treemap',
+                        height: 320,
+                        animations: {
+                            enabled: true,
+                            speed: 800
+                        },
+                        toolbar: {
+                            show: true
+                        }
+                    },
+                    plotOptions: {
+                        treemap: {
+                            distributed: true,
+                            enableShades: false,
+                            colorScale: {
+                                ranges: [
+                                    {
+                                        from: 0,
+                                        to: 10,
+                                        color: '#FFB01F'
+                                    },
+                                    {
+                                        from: 11,
+                                        to: 20,
+                                        color: '#00D9FF'
+                                    },
+                                    {
+                                        from: 21,
+                                        to: 50,
+                                        color: '#00E396'
+                                    },
+                                    {
+                                        from: 51,
+                                        to: 1000,
+                                        color: '#775DD0'
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    dataLabels: {
+                        enabled: true,
+                        style: {
+                            fontSize: '12px',
+                            fontWeight: 'bold'
+                        },
+                        formatter: function(text, op) {
+                            return [text, op.value + ' mttos'];
+                        }
+                    },
+                    legend: {
+                        show: false
+                    },
+                    title: {
+                        text: 'Mantenimientos por Técnico',
+                        align: 'center',
+                        style: {
+                            fontSize: '14px',
+                            fontWeight: 600
+                        }
+                    }
+                };
+
+                const chart = new ApexCharts(document.querySelector("#chartTecnicos"), options);
+                chart.render();
             }
         }
     });
@@ -266,6 +506,17 @@ function cargarReporteSedes() {
                 window.chartSedesApex = new ApexCharts(document.querySelector("#chartSedes"), options);
                 window.chartSedesApex.render();
             }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error al cargar sedes:', error);
+            console.error('Response:', xhr.responseText);
+            $('#tablaSedes').html(
+                '<div style="padding: 20px; text-align: center; color: #dc3545;">' +
+                '<i class="fas fa-exclamation-triangle fa-2x"></i><br><br>' +
+                '<strong>Error al cargar los datos</strong><br>' +
+                '<small>' + (xhr.responseText || error) + '</small>' +
+                '</div>'
+            );
         }
     });
 }
@@ -282,29 +533,243 @@ function cargarReporteSinMantenimiento() {
         },
         dataType: 'json',
         success: function(response) {
+            console.log('Respuesta equipos sin mantenimiento:', response);
+            
             if (response.success) {
                 let html = '<table style="width: 100%; border-collapse: collapse;">';
                 html += '<thead><tr style="border-bottom: 2px solid #000;">';
                 html += '<th style="padding: 8px; text-align: left;">Código</th>';
-                html += '<th style="padding: 8px; text-align: left;">Equipo</th>';
+                html += '<th style="padding: 8px; text-align: left;">Marca</th>';
+                html += '<th style="padding: 8px; text-align: left;">Modelo</th>';
+                html += '<th style="padding: 8px; text-align: left;">Sede</th>';
                 html += '<th style="padding: 8px; text-align: left;">Estado</th>';
                 html += '<th style="padding: 8px; text-align: left;">Último Mantenimiento</th>';
+                html += '<th style="padding: 8px; text-align: right;">Días sin Mtto.</th>';
                 html += '</tr></thead><tbody>';
                 
-                response.data.forEach(function(item) {
-                    html += '<tr style="border-bottom: 1px solid #ccc;">';
-                    html += `<td style="padding: 8px;">${item.codigo_patrimonial}</td>`;
-                    html += `<td style="padding: 8px;">${item.marca} ${item.modelo}</td>`;
-                    html += `<td style="padding: 8px;">${item.estado}</td>`;
-                    html += `<td style="padding: 8px;">${item.ultimo_mantenimiento ? new Date(item.ultimo_mantenimiento).toLocaleDateString('es-ES') : 'Nunca'}</td>`;
-                    html += '</tr>';
-                });
+                if (response.data.length === 0) {
+                    html += '<tr><td colspan="7" style="padding: 20px; text-align: center; color: #28a745;">';
+                    html += '<i class="fas fa-check-circle fa-2x"></i><br><br>';
+                    html += '<strong>¡Excelente!</strong> Todos los equipos han recibido mantenimiento en los últimos ' + dias + ' días.';
+                    html += '</td></tr>';
+                } else {
+                    response.data.forEach(function(item) {
+                        html += '<tr style="border-bottom: 1px solid #ccc;">';
+                        html += `<td style="padding: 8px;">${item.codigo_patrimonial}</td>`;
+                        html += `<td style="padding: 8px;">${item.marca || 'N/A'}</td>`;
+                        html += `<td style="padding: 8px;">${item.modelo || 'N/A'}</td>`;
+                        html += `<td style="padding: 8px;">${item.sede || 'N/A'}</td>`;
+                        html += `<td style="padding: 8px;">${item.estado || 'N/A'}</td>`;
+                        html += `<td style="padding: 8px;">${item.ultimo_mantenimiento ? new Date(item.ultimo_mantenimiento).toLocaleDateString('es-ES') : 'Nunca'}</td>`;
+                        html += `<td style="padding: 8px; text-align: right; font-weight: bold; color: ${item.dias_sin_mantenimiento > 180 ? '#dc3545' : '#ffc107'};">${item.dias_sin_mantenimiento}</td>`;
+                        html += '</tr>';
+                    });
+                }
                 
                 html += '</tbody></table>';
+                
+                if (response.data.length > 0) {
+                    html += `<div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; color: #856404;">`;
+                    html += `<strong><i class="fas fa-exclamation-triangle"></i> Alerta:</strong> Se encontraron ${response.data.length} equipo(s) sin mantenimiento en más de ${dias} días.`;
+                    html += `</div>`;
+                }
+                
                 $('#tablaSinMantenimiento').html(html);
+                
+                // Cargar gráfico de distribución por días
+                if (response.data.length > 0) {
+                    cargarGraficoDistribucionDias(response.data, dias);
+                }
             }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error al cargar equipos sin mantenimiento:', error);
+            console.error('Respuesta completa:', xhr.responseText);
+            $('#tablaSinMantenimiento').html(
+                '<div style="padding: 20px; text-align: center; color: #dc3545;">' +
+                '<i class="fas fa-exclamation-triangle fa-2x"></i><br><br>' +
+                'Error al cargar los datos. Por favor, revise la consola.' +
+                '</div>'
+            );
         }
     });
+}
+
+// Función para cargar gráfico de distribución de días sin mantenimiento
+function cargarGraficoDistribucionDias(data, diasFiltro) {
+    // Agrupar por rangos de días
+    const rangos = {
+        'Crítico (>180 días)': 0,
+        'Alerta (120-180 días)': 0,
+        'Advertencia (90-120 días)': 0,
+        'Normal (<90 días)': 0
+    };
+    
+    const equiposPorSede = {};
+    
+    data.forEach(item => {
+        const dias = parseInt(item.dias_sin_mantenimiento);
+        if (dias > 180) {
+            rangos['Crítico (>180 días)']++;
+        } else if (dias > 120) {
+            rangos['Alerta (120-180 días)']++;
+        } else if (dias > 90) {
+            rangos['Advertencia (90-120 días)']++;
+        } else {
+            rangos['Normal (<90 días)']++;
+        }
+        
+        // Contar por sede
+        const sede = item.sede || 'Sin sede';
+        equiposPorSede[sede] = (equiposPorSede[sede] || 0) + 1;
+    });
+    
+    // Gráfico de Polar Area para rangos de días
+    const optionsRangos = {
+        series: Object.values(rangos),
+        chart: {
+            type: 'polarArea',
+            height: 350,
+            animations: {
+                enabled: true,
+                speed: 800
+            },
+            toolbar: {
+                show: true
+            }
+        },
+        labels: Object.keys(rangos),
+        colors: ['#FF4560', '#FEB019', '#FFB01F', '#00E396'],
+        stroke: {
+            width: 2,
+            colors: ['#fff']
+        },
+        fill: {
+            opacity: 0.85
+        },
+        plotOptions: {
+            polarArea: {
+                rings: {
+                    strokeWidth: 0
+                },
+                spokes: {
+                    strokeWidth: 0
+                },
+            }
+        },
+        dataLabels: {
+            enabled: true,
+            formatter: function(val, opts) {
+                return opts.w.config.series[opts.seriesIndex];
+            },
+            style: {
+                fontSize: '14px',
+                fontWeight: 'bold'
+            }
+        },
+        legend: {
+            position: 'bottom',
+            fontSize: '13px'
+        },
+        title: {
+            text: 'Distribución por Nivel de Urgencia',
+            align: 'center',
+            style: {
+                fontSize: '15px',
+                fontWeight: 600
+            }
+        },
+        responsive: [{
+            breakpoint: 480,
+            options: {
+                chart: {
+                    height: 300
+                },
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }]
+    };
+
+    const chartRangos = new ApexCharts(document.querySelector("#chartDistribucionDias"), optionsRangos);
+    chartRangos.render();
+    
+    // Gráfico Heatmap por sedes si hay suficientes datos
+    if (Object.keys(equiposPorSede).length > 1) {
+        const seriesHeatmap = [{
+            name: 'Equipos sin Mtto',
+            data: Object.entries(equiposPorSede).map(([sede, cantidad]) => ({
+                x: sede,
+                y: cantidad
+            }))
+        }];
+        
+        const optionsHeatmap = {
+            series: seriesHeatmap,
+            chart: {
+                type: 'bar',
+                height: 320,
+                animations: {
+                    enabled: true,
+                    speed: 800
+                },
+                toolbar: {
+                    show: true
+                }
+            },
+            plotOptions: {
+                bar: {
+                    borderRadius: 10,
+                    distributed: true,
+                    horizontal: false,
+                    dataLabels: {
+                        position: 'top'
+                    }
+                }
+            },
+            colors: ['#FF4560', '#FEB019', '#FF6B9D', '#00D9FF', '#775DD0', '#FFB01F', '#00E396', '#FEC400'],
+            dataLabels: {
+                enabled: true,
+                formatter: function(val) {
+                    return val + ' equipos';
+                },
+                offsetY: -20,
+                style: {
+                    fontSize: '12px',
+                    colors: ['#304758']
+                }
+            },
+            xaxis: {
+                categories: Object.keys(equiposPorSede),
+                labels: {
+                    rotate: -45,
+                    style: {
+                        fontSize: '11px'
+                    }
+                }
+            },
+            yaxis: {
+                title: {
+                    text: 'Cantidad de Equipos'
+                }
+            },
+            legend: {
+                show: false
+            },
+            title: {
+                text: 'Equipos sin Mantenimiento por Sede',
+                align: 'center',
+                style: {
+                    fontSize: '15px',
+                    fontWeight: 600
+                }
+            }
+        };
+
+        const chartHeatmap = new ApexCharts(document.querySelector("#chartSedesSinMtto"), optionsHeatmap);
+        chartHeatmap.render();
+    }
 }
 
 function exportarPDF(tipo) {
@@ -919,11 +1384,22 @@ document.addEventListener('DOMContentLoaded', function() {
             </button>
         </div>
         
-        <div style="display: grid; grid-template-columns: 1fr; gap: 20px;">
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px;">
             <div class="report-section">
                 <h6 style="color: var(--text-primary); margin-bottom: 15px;">Detalle de Mantenimientos</h6>
                 <div id="tablaMantenimientos" class="report-table" style="max-height: 400px; overflow-y: auto;"></div>
             </div>
+            
+            <div class="report-section">
+                <h6 style="color: var(--text-primary); margin-bottom: 15px;">🎯 Gráfico Radial 3D - Tipos de Demanda</h6>
+                <div id="chartMantenimientos" style="min-height: 400px;"></div>
+            </div>
+        </div>
+        
+        <!-- Nueva fila con gráfico de técnicos -->
+        <div class="report-section" style="margin-top: 20px;">
+            <h6 style="color: var(--text-primary); margin-bottom: 15px;">🔥 Treemap - Rendimiento por Técnico</h6>
+            <div id="chartTecnicos" style="min-height: 350px;"></div>
         </div>
         
         <div style="margin-top: 20px;">
@@ -988,8 +1464,21 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
         
         <div class="report-section">
-            <h6 style="color: var(--text-primary); margin-bottom: 15px;">Equipos que requieren atención</h6>
+            <h6 style="color: var(--text-primary); margin-bottom: 15px;">📋 Equipos que requieren atención</h6>
             <div id="tablaSinMantenimiento" class="report-table" style="max-height: 400px; overflow-y: auto;"></div>
+        </div>
+        
+        <!-- Nuevos gráficos de análisis -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+            <div class="report-section">
+                <h6 style="color: var(--text-primary); margin-bottom: 15px;">🎨 Polar Area - Nivel de Urgencia</h6>
+                <div id="chartDistribucionDias" style="min-height: 380px;"></div>
+            </div>
+            
+            <div class="report-section">
+                <h6 style="color: var(--text-primary); margin-bottom: 15px;">📊 Distribución por Sede</h6>
+                <div id="chartSedesSinMtto" style="min-height: 380px;"></div>
+            </div>
         </div>
         
         <div style="margin-top: 20px;">
