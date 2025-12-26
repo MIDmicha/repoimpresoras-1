@@ -1,6 +1,7 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 
+require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/functions.php';
 
@@ -138,7 +139,6 @@ function mantenimientosPorPeriodo($db) {
             LEFT JOIN tipos_demanda td ON m.id_tipo_demanda = td.id
             LEFT JOIN estados_equipo est ON m.id_estado_nuevo = est.id
             WHERE m.fecha_mantenimiento BETWEEN :fecha_inicio AND :fecha_fin
-            AND m.activo = 1
             ORDER BY m.fecha_mantenimiento DESC";
     
     $stmt = $db->prepare($sql);
@@ -192,7 +192,7 @@ function equiposSinMantenimiento($db) {
                 COALESCE(MAX(m.fecha_mantenimiento), e.fecha_creacion) as ultimo_mantenimiento,
                 DATEDIFF(NOW(), COALESCE(MAX(m.fecha_mantenimiento), e.fecha_creacion)) as dias_sin_mantenimiento
             FROM equipos e
-            LEFT JOIN mantenimientos m ON e.id = m.id_equipo AND m.activo = 1
+            LEFT JOIN mantenimientos m ON e.id = m.id_equipo
             LEFT JOIN marcas ma ON e.id_marca = ma.id
             LEFT JOIN modelos mo ON e.id_modelo = mo.id
             LEFT JOIN sedes s ON e.id_sede = s.id
@@ -482,7 +482,7 @@ function equiposAntiguos($db) {
             LEFT JOIN modelos mo ON e.id_modelo = mo.id
             LEFT JOIN sedes s ON e.id_sede = s.id
             LEFT JOIN estados_equipo est ON e.id_estado = est.id
-            LEFT JOIN mantenimientos m ON e.id = m.id_equipo AND m.activo = 1
+            LEFT JOIN mantenimientos m ON e.id = m.id_equipo
             WHERE e.activo = 1
             AND YEAR(CURDATE()) - YEAR(e.fecha_registro) >= 3
             GROUP BY e.id
@@ -513,7 +513,7 @@ function resumenEjecutivo($db) {
     
     // Mantenimientos últimos 30 días
     $sql = "SELECT COUNT(*) as total FROM mantenimientos 
-            WHERE fecha_mantenimiento >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND activo = 1";
+            WHERE fecha_mantenimiento >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
     $estadisticas['mantenimientos_mes'] = $db->query($sql)->fetch(PDO::FETCH_ASSOC)['total'];
     
     // Top 5 sedes con más equipos
@@ -636,7 +636,6 @@ function exportarExcel($db) {
                     LEFT JOIN tipos_demanda td ON m.id_tipo_demanda = td.id
                     LEFT JOIN estados_equipo est ON m.id_estado_nuevo = est.id
                     WHERE m.fecha_mantenimiento BETWEEN :fecha_inicio AND :fecha_fin
-                    AND m.activo = 1
                     ORDER BY m.fecha_mantenimiento DESC";
             
             $stmt = $db->prepare($sql);
