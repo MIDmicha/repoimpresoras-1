@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Dark Mode</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 20px; 
+            transition: all 0.3s;
+            background: #fff;
+        }
+        body.dark-mode { 
+            background: #1a1d2e; 
+            color: #e4e4e7; 
+        }
+        
+        .card { 
+            background: white; 
+            border-radius: 10px; 
+            padding: 20px; 
+            margin: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+        }
+        
+        body.dark-mode .card { 
+            background: #252b3d !important; 
+            color: #e4e4e7 !important; 
+            border: 1px solid #3a4158; 
+        }
+        
+        body.dark-mode .card-header { 
+            background: #252b3d !important; 
+            border-bottom-color: #3a4158 !important; 
+        }
+        
+        body.dark-mode .card-header h5,
+        body.dark-mode .card h5 { 
+            color: #e4e4e7 !important; 
+        }
+        
+        .toggle-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: #7366FF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <button class="toggle-btn" onclick="toggleDarkMode()">Toggle Dark Mode</button>
+    
+    <h1>Test de Dark Mode para Headers</h1>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5>Título del Gráfico 1</h5>
+        </div>
+        <div class="card-body">
+            <p>Este es el contenido del card</p>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5>Título del Gráfico 2</h5>
+        </div>
+        <div class="card-body">
+            <h5>Subtítulo dentro del body</h5>
+            <p>Más contenido aquí</p>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h5>Card sin header separado</h5>
+        <p>Contenido directo</p>
+    </div>
+
+    <script>
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,263 @@
+﻿<?php
+require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../includes/functions.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+if (!isLoggedIn()) {
+    redirect('controllers/auth.php');
+}
+
+$page_title = 'Reportes y Estadísticas';
+
+include __DIR__ . '/../../includes/header.php';
+?>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="container-fluid">
+    <h1><i class="fas fa-chart-line"></i> Reportes y Estadísticas</h1>
+    
+    <div style="margin: 20px 0;">
+        <button onclick="exportarPDF()" class="btn btn-danger">
+            <i class="fas fa-file-pdf"></i> Exportar PDF
+        </button>
+        <button onclick="exportarExcel()" class="btn btn-success">
+            <i class="fas fa-file-excel"></i> Exportar Excel
+        </button>
+        <button onclick="window.print()" class="btn btn-secondary">
+            <i class="fas fa-print"></i> Imprimir
+        </button>
+    </div>
+    
+    <div style="margin: 20px 0;">
+        <h3>Filtros de Fecha</h3>
+        <input type="date" id="filtroFechaInicio" class="form-control" style="display:inline-block; width:200px; margin-right:10px;">
+        <input type="date" id="filtroFechaFin" class="form-control" style="display:inline-block; width:200px; margin-right:10px;">
+        <button onclick="aplicarFiltros()" class="btn btn-primary">
+            <i class="fas fa-filter"></i> Aplicar Filtros
+        </button>
+    </div>
+    
+    <hr>
+    
+    <div style="margin: 30px 0;">
+        <h2>Resumen Ejecutivo</h2>
+        <table border="1" cellpadding="15" width="100%">
+            <tr>
+                <td><strong>Total Equipos:</strong> <span id="totalEquipos">0</span></td>
+                <td><strong>Equipos Operativos:</strong> <span id="equiposOperativos">0</span></td>
+                <td><strong>Por Reparar:</strong> <span id="equiposPorReparar">0</span></td>
+                <td><strong>En Mantenimiento:</strong> <span id="equiposEnMantenimiento">0</span></td>
+            </tr>
+            <tr>
+                <td><strong>Mantenimientos Este Mes:</strong> <span id="mantenimientosMes">0</span></td>
+                <td><strong>Mantenimientos Este Año:</strong> <span id="mantenimientosAnio">0</span></td>
+                <td><strong>Promedio Mantenimientos:</strong> <span id="promedioMantenimientos">0</span></td>
+                <td><strong>% Operativos:</strong> <span id="porcentajeOperativos">0%</span></td>
+            </tr>
+        </table>
+    </div>
+    
+    <hr>
+    
+    <div style="margin: 30px 0;">
+        <h2>Equipos por Estado</h2>
+        <div style="overflow:hidden;">
+            <div style="width:48%; float:left;">
+                <h3>Datos Tabulares</h3>
+                <table border="1" cellpadding="8" width="100%">
+                    <thead>
+                        <tr>
+                            <th>Estado</th>
+                            <th>Cantidad</th>
+                            <th>Porcentaje</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaEstados"></tbody>
+                </table>
+            </div>
+            <div style="width:48%; float:right;">
+                <h3>Visualización</h3>
+                <canvas id="chartEstados" height="300"></canvas>
+            </div>
+        </div>
+        <div style="clear:both;"></div>
+    </div>
+    
+    <hr>
+    
+    <div style="margin: 30px 0;">
+        <h2>Tendencia de Mantenimientos (Últimos 12 Meses)</h2>
+        <canvas id="chartTendencia" height="300"></canvas>
+    </div>
+    
+    <hr>
+    
+    <div style="margin: 30px 0;">
+        <h2>Equipos por Marca</h2>
+        <div style="overflow:hidden;">
+            <div style="width:48%; float:left;">
+                <h3>Datos</h3>
+                <table border="1" cellpadding="8" width="100%">
+                    <thead>
+                        <tr>
+                            <th>Marca</th>
+                            <th>Cantidad</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaMarcas"></tbody>
+                </table>
+            </div>
+            <div style="width:48%; float:right;">
+                <h3>Gráfico</h3>
+                <canvas id="chartMarcas" height="300"></canvas>
+            </div>
+        </div>
+        <div style="clear:both;"></div>
+    </div>
+    
+    <hr>
+    
+    <div style="margin: 30px 0;">
+        <h2>Equipos por Sede</h2>
+        <div style="overflow:hidden;">
+            <div style="width:48%; float:left;">
+                <h3>Datos</h3>
+                <table border="1" cellpadding="8" width="100%">
+                    <thead>
+                        <tr>
+                            <th>Sede</th>
+                            <th>Cantidad</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaSedes"></tbody>
+                </table>
+            </div>
+            <div style="width:48%; float:right;">
+                <h3>Gráfico</h3>
+                <canvas id="chartSedes" height="350"></canvas>
+            </div>
+        </div>
+        <div style="clear:both;"></div>
+    </div>
+    
+    <hr>
+    
+    <div style="margin: 30px 0;">
+        <h2>Top 20 Modelos de Equipos</h2>
+        <div id="tablaModelos"></div>
+    </div>
+    
+    <hr>
+    
+    <div style="margin: 30px 0;">
+        <h2>Equipos por Distrito Fiscal</h2>
+        <div id="tablaDistritos"></div>
+    </div>
+    
+    <hr>
+    
+    <div style="margin: 30px 0;">
+        <h2>Mantenimientos por Tipo de Demanda</h2>
+        <div style="overflow:hidden;">
+            <div style="width:48%; float:left;">
+                <h3>Datos</h3>
+                <table border="1" cellpadding="8" width="100%">
+                    <thead>
+                        <tr>
+                            <th>Tipo de Demanda</th>
+                            <th>Cantidad</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaTipoDemanda"></tbody>
+                </table>
+            </div>
+            <div style="width:48%; float:right;">
+                <h3>Gráfico</h3>
+                <canvas id="chartTipoDemanda" height="300"></canvas>
+            </div>
+        </div>
+        <div style="clear:both;"></div>
+    </div>
+    
+    <hr>
+    
+    <div style="margin: 30px 0;">
+        <h2>Desempeño de Técnicos</h2>
+        <div id="tablaTecnicos"></div>
+    </div>
+    
+    <hr>
+    
+    <div style="margin: 30px 0;">
+        <h2>Equipos Sin Mantenimiento (Más de 180 días)</h2>
+        <div id="tablaSinMantenimiento"></div>
+    </div>
+    
+    <hr>
+    
+    <div style="margin: 30px 0;">
+        <h2>Top 15 Equipos con Más Mantenimientos</h2>
+        <div id="tablaTopMantenimientos"></div>
+    </div>
+    
+    <hr>
+    
+    <div style="margin: 30px 0;">
+        <h2>Equipos Antiguos (3+ años)</h2>
+        <div id="tablaEquiposAntiguos"></div>
+    </div>
+</div>
+
+<script>
+let charts = {};
+
+jQuery(document).ready(function($) {
+    const hoy = new Date().toISOString().split("T")[0];
+    const primerDiaMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
+    $("#filtroFechaInicio").val(primerDiaMes);
+    $("#filtroFechaFin").val(hoy);
+    
+    cargarTodosLosReportes();
+});
+
+function cargarTodosLosReportes() {
+    cargarEstadisticasGenerales();
+    cargarReporteEstados();
+    cargarReporteMarcas();
+    cargarReporteModelos();
+    cargarReporteSedes();
+    cargarReporteDistritos();
+    cargarTendenciaMantenimientos();
+    cargarMantenimientosTipoDemanda();
+    cargarMantenimientosTecnicos();
+    cargarEquiposSinMantenimiento();
+    cargarTopEquiposMantenimiento();
+    cargarEquiposAntiguos();
+}
+
+function cargarEstadisticasGenerales() {
+    jQuery.ajax({
+        url: BASE_URL + "/controllers/reportes.php",
+        method: "GET",
+        data: { action: "estadisticasGenerales" },
+        dataType: "json",
+        success: function(response) {
+            if (response.success) {
+                const data = response.data;
+                jQuery("#totalEquipos").text(data.total_equipos);
+                jQuery("#equiposOperativos").text(data.equipos_operativos);
+                jQuery("#equiposPorReparar").text(data.equipos_por_reparar);
+                jQuery("#equiposEnMantenimiento").text(data.equipos_en_mantenimiento);
+                jQuery("#mantenimientosMes").text(data.mantenimientos_mes);
+                jQuery("#mantenimientosAnio").text(data.mantenimientos_anio);
+                jQuery("#promedioMantenimientos").text(data.promedio_mantenimientos);
+                jQuery("#porcentajeOperativos").text(data.porcentaje_operativos + "%");
+            }
+        }
+    });
+}

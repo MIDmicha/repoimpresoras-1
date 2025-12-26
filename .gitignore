@@ -1,0 +1,48 @@
+# Archivos de configuración sensibles
+config/config.php
+
+# Archivos de base de datos (opcional - descomentar si no quieres subir dumps)
+# *.sql
+
+# Directorio de uploads con imágenes de equipos
+uploads/equipos/*
+!uploads/equipos/.gitkeep
+
+# Archivos temporales de PHP
+*.log
+*.tmp
+
+# Archivos de sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Directorios de IDEs y editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Composer (si decides usar)
+vendor/
+composer.lock
+
+# Archivos de Node (si decides usar)
+node_modules/
+package-lock.json
+
+# Archivos temporales de Windows
+ehthumbs.db
+
+# Archivos de respaldo
+*.bak
+*.backup
+*~
+
+# Plantilla completa (opcional - ya que ocupa mucho espacio)
+# plantilla/
+
+# Logs de Apache/PHP
+error.log
+access.log

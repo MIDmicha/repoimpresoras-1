@@ -1,0 +1,19 @@
+RewriteEngine On
+
+# Prevenir acceso a archivos sensibles
+<FilesMatch "\.(env|ini|log|sql)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Redireccionar errores comunes
+ErrorDocument 404 /impresoras/views/error404.php
+ErrorDocument 403 /impresoras/views/error403.php
+ErrorDocument 500 /impresoras/views/error500.php
+
+# Proteger directorios
+Options -Indexes
+
+# Forzar HTTPS (descomentar si usas SSL)
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
