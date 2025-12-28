@@ -281,8 +281,8 @@ CREATE TRIGGER `after_equipo_update` AFTER UPDATE ON `equipos` FOR EACH ROW BEGI
         
     ELSEIF OLD.id_estado != NEW.id_estado THEN
         
-        SELECT nombre INTO estado_anterior FROM estados_equipo WHERE id = OLD.id_estado;
-        SELECT nombre INTO estado_nuevo FROM estados_equipo WHERE id = NEW.id_estado;
+        SELECT nombre INTO estado_anterior FROM estados_equipo WHERE id = OLD.id_estado LIMIT 1;
+        SELECT nombre INTO estado_nuevo FROM estados_equipo WHERE id = NEW.id_estado LIMIT 1;
         
         SET descripcion_var = CONCAT('Estado cambiado de "', estado_anterior, '" a "', estado_nuevo, '"');
         

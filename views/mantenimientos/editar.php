@@ -6,10 +6,7 @@
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../includes/functions.php';
 
-// Verificar sesión
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+// Verificar autenticación
 if (!isLoggedIn()) {
     header('Location: ' . BASE_URL . '/views/login.php');
     exit;
@@ -347,33 +344,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         <?php foreach ($equipos as $equipo): ?>
                                         <option value="<?php echo $equipo['id']; ?>" 
                                                 <?php echo ($mantenimiento['id_equipo'] == $equipo['id']) ? 'selected' : ''; ?>
-                                                data-marca="<?php echo htmlspecialchars($equipo['marca']); ?>"
-                                                data-modelo="<?php echo htmlspecialchars($equipo['modelo']); ?>"
-                                                data-serie="<?php echo htmlspecialchars($equipo['serie']); ?>"
+                                                data-marca="<?php echo htmlspecialchars($equipo['marca'] ?? ''); ?>"
+                                                data-modelo="<?php echo htmlspecialchars($equipo['modelo'] ?? ''); ?>"
+                                                data-serie="<?php echo htmlspecialchars($equipo['numero_serie'] ?? ''); ?>"
                                                 data-estado="<?php echo $equipo['id_estado']; ?>">
-                                            <?php echo htmlspecialchars($equipo['nombre']); ?> - 
-                                            <?php echo htmlspecialchars($equipo['marca']); ?> 
-                                            <?php echo htmlspecialchars($equipo['modelo']); ?> 
-                                            (<?php echo htmlspecialchars($equipo['serie']); ?>)
+                                            <?php echo htmlspecialchars($equipo['codigo_patrimonial'] ?? ''); ?> - 
+                                            <?php echo htmlspecialchars($equipo['marca'] ?? ''); ?> 
+                                            <?php echo htmlspecialchars($equipo['modelo'] ?? ''); ?> 
+                                            (<?php echo htmlspecialchars($equipo['numero_serie'] ?? 'S/N'); ?>)
                                         </option>
                                         <?php endforeach; ?>
                                     </select>
                                     
                                     <!-- Info del equipo seleccionado -->
-                                    <div id="infoEquipo" class="info-equipo mt-3">
+                                    <div id="infoEquipo" class="info-equipo mt-3" style="display: none;">
                                         <h6><i class="fas fa-info-circle"></i> Información del Equipo</h6>
                                         <div class="row">
                                             <div class="col-md-4">
                                                 <small class="text-muted">Marca:</small><br>
-                                                <strong id="equipo_marca"><?php echo htmlspecialchars($mantenimiento['equipo_marca'] ?? '-'); ?></strong>
+                                                <strong id="equipo_marca">-</strong>
                                             </div>
                                             <div class="col-md-4">
                                                 <small class="text-muted">Modelo:</small><br>
-                                                <strong id="equipo_modelo"><?php echo htmlspecialchars($mantenimiento['equipo_modelo'] ?? '-'); ?></strong>
+                                                <strong id="equipo_modelo">-</strong>
                                             </div>
                                             <div class="col-md-4">
                                                 <small class="text-muted">Serie:</small><br>
-                                                <strong id="equipo_serie"><?php echo htmlspecialchars($mantenimiento['equipo_serie'] ?? '-'); ?></strong>
+                                                <strong id="equipo_serie">-</strong>
                                             </div>
                                         </div>
                                     </div>

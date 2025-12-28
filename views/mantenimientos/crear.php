@@ -6,10 +6,7 @@
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../includes/functions.php';
 
-// Verificar sesión
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+// Verificar autenticación
 if (!isLoggedIn()) {
     header('Location: ' . BASE_URL . '/views/login.php');
     exit;
